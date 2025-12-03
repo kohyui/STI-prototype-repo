@@ -1,0 +1,1513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>PQC VPN Manager — Quantum-Safe TLS Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<style>
+/* ===========================
+   ROOT THEME VARIABLES
+=========================== */
+:root {
+  --bg: #060917;
+  --bg-alt: #0d1020;
+  --card: #111528;
+  --card-soft: #191f35;
+  --accent: #4f46e5;
+  --accent-soft: rgba(79, 70, 229, 0.15);
+  --accent-strong: #22c55e;
+  --danger: #ef4444;
+  --danger-soft: rgba(239, 68, 68, 0.1);
+  --warning: #facc15;
+
+  --text-main: #f9fafb;
+  --text-muted: #9ca3af;
+
+  --border-subtle: #1f2937;
+
+  --pill-safe: rgba(34, 197, 94, 0.12);
+  --pill-safe-border: rgba(34, 197, 94, 0.6);
+  --pill-vuln: rgba(239, 68, 68, 0.12);
+  --pill-vuln-border: rgba(239, 68, 68, 0.6);
+  --pill-legacy: rgba(234, 179, 8, 0.12);
+  --pill-legacy-border: rgba(234, 179, 8, 0.6);
+
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+/* RISK BADGES */
+.badge-hndl-low { background: rgba(34,197,94,0.12); border:1px solid rgba(34,197,94,0.5); color:#bbf7d0; }
+.badge-hndl-med { background: rgba(234,179,8,0.12); border:1px solid rgba(234,179,8,0.5); color:#fef3c7; }
+.badge-hndl-high { background: rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.5); color:#fecaca; }
+
+body {
+  background: radial-gradient(circle at top, #111827 0, var(--bg) 60%);
+  color: var(--text-main);
+  min-height: 100vh;
+  display: flex;
+}
+
+/* ===========================
+   SIDEBAR NAVIGATION
+=========================== */
+.sidebar {
+  width: 250px;
+  background: var(--bg-alt);
+  border-right: 1px solid var(--border-subtle);
+  padding: 20px 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.sidebar h1 {
+  font-size: 1.3rem;
+  color: var(--text-main);
+  margin-bottom: 10px;
+}
+
+.nav-item {
+  padding: 10px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  color: var(--text-muted);
+  background: rgba(255,255,255,0.03);
+  transition: all 0.2s;
+}
+.nav-item:hover {
+  background: rgba(255,255,255,0.08);
+  color: var(--text-main);
+}
+.nav-item.active {
+  background: var(--accent-soft);
+  border-left: 3px solid var(--accent);
+  color: white;
+}
+
+/* User Profile Badge */
+.user-badge {
+    margin-top: auto;
+    background: var(--card);
+    padding: 12px;
+    border-radius: 12px;
+    border: 1px solid var(--border-subtle);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.user-avatar {
+    width: 32px; height: 32px;
+    background: var(--accent);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: bold; font-size: 0.8rem; color: #fff;
+}
+
+/* ===========================
+   MAIN CONTENT AREA
+=========================== */
+.main {
+  flex: 1;
+  padding: 25px;
+  overflow-y: auto;
+}
+
+.page { display: none; }
+
+/* ===========================
+   CARDS / METRIC BOXES
+=========================== */
+.cards-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0,1fr));
+  gap: 16px;
+  margin-bottom: 25px;
+}
+
+.card {
+  background: radial-gradient(circle at top left, #1f2937 0, #020617 70%);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  padding: 14px;
+  position: relative;
+  overflow: hidden;
+}
+.card::after {
+  content: "";
+  position: absolute;
+  inset: -40%;
+  opacity: 0.1;
+  background: radial-gradient(circle at top, #4f46e5, transparent 55%);
+}
+.card h2 {
+  font-size: 0.75rem;
+  margin-bottom: 6px;
+  color: var(--text-muted);
+}
+.card-main {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+.card-main span.value { font-size: 1.6rem; font-weight: 700; }
+.card-main span.unit { font-size: 0.8rem; color: var(--text-muted); }
+
+/* ===========================
+   TABLES
+=========================== */
+.table-wrapper {
+  width: 100%;
+  background: var(--card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  overflow: hidden;
+  margin-top: 20px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+th {
+  background: #020617;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  padding: 10px;
+  font-size: 0.7rem;
+  text-align: left;
+}
+td {
+  padding: 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  text-align: left;
+}
+tbody tr:hover { background: rgba(255,255,255,0.05); cursor: pointer; }
+tbody tr.selected { background: rgba(79,70,229,0.22); }
+
+.badge {
+  padding: 3px 8px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-subtle);
+  font-size: 0.65rem;
+}
+.badge-safe { background: var(--pill-safe); border-color: var(--pill-safe-border); color: #bbf7d0; }
+.badge-vuln { background: var(--pill-vuln); border-color: var(--pill-vuln-border); color: #fecaca; }
+.badge-legacy { background: var(--pill-legacy); border-color: var(--pill-legacy-border); color: #fef3c7; }
+.badge-deprecated { background: #374151; border-color: #4b5563; color: #9ca3af; text-decoration: line-through; }
+
+/* ===========================
+   KEY MANAGEMENT STYLES
+=========================== */
+.crypto-section {
+  background: var(--card);
+  margin-bottom: 25px;
+  padding: 20px;
+  border-radius: 16px;
+  border: 1px solid var(--border-subtle);
+  text-align: left;
+}
+.crypto-section h2 { font-size: 1rem; margin-bottom: 5px; color: var(--accent); display:flex; align-items:center; gap:8px; }
+.crypto-section h3 { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 6px; margin-top: 16px; }
+.section-desc { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 15px; }
+
+/* Split View for Keys */
+.key-mgmt-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 25px;
+}
+.key-card {
+    background: var(--bg-alt);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: 15px;
+    margin-bottom: 10px;
+}
+.key-card-header {
+    display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.85rem; font-weight: bold;
+}
+.key-meta { font-family: monospace; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px; display: flex; justify-content: space-between; }
+
+/* Input/Select Styles */
+select, input[type="text"] {
+  background: var(--card-soft);
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-main);
+  margin-top: 5px;
+  width: 100%;
+  max-width: 400px;
+  display: block;
+}
+
+/* Algo Specs Table */
+.algo-spec-grid {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr 1fr 1fr;
+    gap: 10px;
+    font-size: 0.8rem;
+    background: var(--card-soft);
+    padding: 10px;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    align-items: center;
+}
+.spec-label { font-weight: bold; color: var(--text-main); }
+.spec-val { color: var(--text-muted); }
+.spec-cost-low { color: #4ade80; }
+.spec-cost-med { color: #facc15; }
+.spec-cost-high { color: #f87171; }
+
+.tunnel-checkbox-list {
+  max-height: 150px; overflow-y: auto; border: 1px solid var(--border-subtle);
+  border-radius: 10px; padding: 10px; background: var(--card-soft); max-width: 400px;
+}
+.tunnel-checkbox-item { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; font-size: 0.85rem; }
+.tunnel-checkbox-item input { width: auto; margin: 0; }
+
+/* ===========================
+   SIMULATION / LOADING AREA
+=========================== */
+.simulation-box {
+    background: var(--bg-alt); 
+    padding: 20px; 
+    border-radius: 16px; 
+    border: 1px solid var(--border-subtle); 
+    margin-bottom: 25px;
+    display: none; 
+    flex-direction: column;
+}
+.progress-track {
+    width: 100%; height: 8px; background: var(--card-soft); border-radius: 5px; margin-bottom: 15px; overflow: hidden;
+}
+.progress-fill {
+    height: 100%; width: 0%; background: var(--accent-strong); border-radius: 5px; transition: width 0.3s ease-out;
+}
+.terminal-output {
+    height: 140px; overflow-y: auto; background: #000; padding: 12px; border-radius: 8px; 
+    font-size: 0.75rem; font-family: 'Courier New', monospace; color: var(--text-muted); 
+    white-space: pre-wrap; border: 1px solid var(--border-subtle);
+}
+
+/* ===========================
+   TUNNEL DETAILS (SPLIT VIEW + CERT)
+=========================== */
+.detail-panel {
+  background: var(--card-soft); padding: 0; border-radius: 8px;
+  border: 1px solid var(--border-subtle); margin-top: 20px; overflow: hidden; display: none;
+}
+
+.detail-header-bar {
+    padding: 8px 12px; background: #fff; border-bottom: 1px solid #ccc;
+    display: flex; justify-content: space-between; align-items: center;
+    color: #000; font-family: 'Segoe UI', sans-serif; font-size: 0.85rem;
+}
+
+/* THE SPLIT LAYOUT */
+.split-view-container {
+    display: grid; 
+    grid-template-columns: 1.1fr 0.9fr; 
+    min-height: 480px;
+    background: #f0f0f0; /* Windows-like gray background */
+}
+
+/* LEFT SIDE: CERT VIEWER (Windows Style) */
+.cert-side {
+    border-right: 1px solid #ccc;
+    display: flex; flex-direction: column;
+    background: #fff;
+    color: #000;
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+}
+.cert-tabs {
+    display: flex; background: #fff; border-bottom: 1px solid #ccc; padding-left: 10px; margin-top: 10px;
+}
+.cert-tab {
+    padding: 6px 12px; cursor: pointer; color: #333; font-size: 0.8rem; 
+    background: transparent; border: 1px solid transparent; margin-bottom: -1px;
+    border-top-left-radius: 2px; border-top-right-radius: 2px;
+}
+.cert-tab:hover { background: #f5f5f5; }
+.cert-tab.active { 
+    background: #fff; color: #000; border: 1px solid #ccc; border-bottom: 1px solid #fff; z-index: 10;
+}
+
+.cert-body { padding: 20px; flex: 1; overflow-y: auto; background: #fff; font-size: 0.8rem; }
+.cert-view-page { display: none; }
+
+/* General Tab Styles - Windows Style */
+.cert-section-title { font-weight: bold; margin-bottom: 4px; margin-top: 15px; color: #000; }
+.cert-section-content { margin-left: 20px; color: #333; line-height: 1.4; }
+.cert-kv-row { display: grid; grid-template-columns: 140px 1fr; margin-bottom: 2px; }
+.cert-kv-key { color: #666; }
+.cert-kv-val { color: #000; font-family: sans-serif; }
+
+/* Details Tab Styles - Windows Style */
+.cert-list { border: 1px solid #ccc; height: 180px; overflow-y: auto; background: #fff; margin-bottom: 10px; }
+.cert-list-header { 
+    display: flex; background: #f0f0f0; border-bottom: 1px solid #ccc; padding: 4px 8px; font-weight: bold; color: #333;
+}
+.cert-list-item { 
+    display: flex; padding: 2px 8px; font-size: 0.8rem; cursor: pointer; 
+}
+.cert-list-item:hover { background: #e0e0e0; }
+.cert-list-item.selected { background: #cce8ff; border: 1px dotted #999; }
+.cert-list-col-1 { width: 40%; border-right: 1px solid #f0f0f0; }
+.cert-list-col-2 { width: 60%; padding-left: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.cert-detail-area {
+    border: 1px solid #ccc; height: 100px; overflow-y: auto; padding: 8px; background: #fff; font-family: monospace; color: #333;
+}
+
+/* RIGHT SIDE: KEM CONSOLE (Dark Mode Tech View) */
+.kem-side {
+    background: #0d1020;
+    display: flex; flex-direction: column;
+    border-left: 1px solid #333;
+}
+.kem-header {
+    padding: 10px 15px; background: #111; border-bottom: 1px solid #333;
+    font-size: 0.75rem; font-weight: bold; color: var(--accent); text-transform: uppercase; letter-spacing: 1px;
+}
+.kem-content {
+    flex: 1; padding: 15px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 0.7rem; color: #ccc;
+}
+.kem-block { margin-bottom: 15px; border-left: 2px solid #444; padding-left: 10px; }
+.kem-block-title { color: #fff; font-weight: bold; margin-bottom: 4px; }
+.kem-hl-pq { color: #4ade80; font-weight: bold; }
+.kem-hex { color: #9ca3af; line-height: 1.2; word-break: break-all; }
+
+/* ===========================
+   ARCHIVES PAGE
+=========================== */
+.archive-card {
+  background: var(--card); padding: 15px; border-radius: 14px;
+  border: 1px solid var(--border-subtle); margin-bottom: 15px; text-align: left;
+}
+
+/* ===========================
+   LOGS
+=========================== */
+.log-box {
+  background: var(--card); padding: 15px; border-radius: 14px; border: 1px solid var(--border-subtle);
+  height: 400px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 0.75rem; color: #ccc; text-align: left;
+}
+.log-entry { margin-bottom: 4px; border-bottom: 1px solid #111; padding-bottom: 2px; }
+.log-time { color: var(--accent); margin-right: 8px; }
+.log-actor { color: var(--warning); margin-right: 8px; font-weight: bold; }
+
+/* ===========================
+   MODALS & ALERTS
+=========================== */
+.modal {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+  justify-content: center; align-items: center; z-index: 999;
+}
+.modal-content {
+  background: var(--card); padding: 20px; border-radius: 12px;
+  border: 1px solid var(--border-subtle); text-align: center;
+}
+.modal-row {
+    display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.9rem;
+    padding-bottom: 8px; border-bottom: 1px solid var(--border-subtle);
+}
+.modal-label { color: var(--text-muted); }
+.modal-val { font-weight: bold; color: #fff; font-family: monospace; }
+.modal-actions { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; }
+
+button {
+  padding: 8px 12px; border-radius: 10px; border: 1px solid var(--accent);
+  cursor: pointer; background: var(--accent); color: white; margin-top: 10px; display: inline-block;
+}
+button:hover { filter: brightness(1.1); }
+.btn-accept { background: #facc15; color: #000; border: none; font-weight: bold; }
+.btn-reject { background: transparent; border: 1px solid var(--text-muted); color: var(--text-muted); }
+.btn-reject:hover { border-color: #ef4444; color: #ef4444; }
+
+.error-banner {
+  margin-top: 10px; padding: 10px; background: var(--danger-soft);
+  border: 1px solid var(--danger); border-radius: 10px; color: #fecaca; display: none; max-width: 400px;
+}
+.success-banner {
+  margin-top: 10px; padding: 10px; background: rgba(34,197,94,0.12);
+  border: 1px solid rgba(34,197,94,0.6); color: #bbf7d0; border-radius: 10px; display: none; max-width: 400px;
+}
+
+/* ============================================================
+   ARCHIVE INSPECTOR STYLES
+============================================================ */
+.inspector-grid {
+    display: grid; grid-template-columns: 1fr 1.5fr; gap: 20px; text-align: left; height: 400px;
+}
+.file-structure {
+    background: var(--bg-alt); border: 1px solid var(--border-subtle); border-radius: 8px;
+    padding: 10px; overflow-y: auto; font-family: monospace; font-size: 0.8rem;
+}
+.structure-block {
+    padding: 10px; border: 1px solid var(--border-subtle); margin-bottom: 8px;
+    border-radius: 6px; cursor: pointer; transition: all 0.2s;
+}
+.structure-block:hover { background: rgba(255,255,255,0.05); }
+.structure-block.active { border-color: var(--accent); background: var(--accent-soft); }
+.structure-label { font-weight: bold; color: #fff; display: block; margin-bottom: 4px; }
+.structure-meta { color: var(--text-muted); font-size: 0.7rem; display: block; }
+
+.hex-editor {
+    background: #000; border: 1px solid #333; color: #4ade80;
+    font-family: 'Courier New', monospace; padding: 15px; overflow-y: auto;
+    border-radius: 8px; font-size: 0.75rem; line-height: 1.4;
+}
+.hex-row { display: flex; gap: 10px; }
+.hex-offset { color: #555; user-select: none; }
+.hex-bytes { color: #ccc; }
+.hex-ascii { color: #666; border-left: 1px solid #333; padding-left: 10px; }
+.highlight-rsa { color: #f87171; background: rgba(248, 113, 113, 0.1); }
+.highlight-kyber { color: #818cf8; background: rgba(129, 140, 248, 0.1); }
+.highlight-aes { color: #9ca3af; }
+.highlight-meta { color: #facc15; }
+
+/* ============================================================
+   MISUSE CASE / ATTACK VISUALIZATION
+============================================================ */
+@keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+.packet-card {
+  background: #000; border: 1px solid #333; border-radius: 8px; padding: 15px;
+  font-family: 'Courier New', monospace; font-size: 0.75rem; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+.packet-header {
+  font-weight: bold; padding-bottom: 8px; border-bottom: 1px solid #333; margin-bottom: 10px; letter-spacing: 1px;
+}
+.packet-row { margin-bottom: 4px; padding: 2px 4px; }
+.highlight-good { background: rgba(74, 222, 128, 0.1); color: #4ade80; }
+.highlight-bad { color: #f87171; }
+.highlight-warn { background: rgba(251, 191, 36, 0.1); color: #fbbf24; font-weight: bold; border: 1px dashed #fbbf24; }
+.packet-footer { margin-top: 15px; padding-top: 8px; border-top: 1px dashed #333; color: #888; font-style: italic; }
+
+</style>
+</head>
+
+<body>
+
+<div class="sidebar">
+  <h1>PQC VPN Manager</h1>
+
+  <div class="nav-item active" data-page="dashboard">Dashboard</div>
+  <div class="nav-item" data-page="tunnels">Tunnels</div>
+  <div class="nav-item" data-page="key-management">Key Management</div> 
+  <div class="nav-item" data-page="archives">Archives</div>
+  <div class="nav-item" data-page="logs">Logs</div>
+
+  <div class="user-badge">
+      <div class="user-avatar">KY</div>
+      <div>
+          <div style="font-size:0.8rem; font-weight:bold;">Koh Yui</div>
+          <div style="font-size:0.65rem; color:var(--text-muted);">Security Admin</div>
+      </div>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- ================= DASHBOARD PAGE ================= -->
+  <div id="page-dashboard" class="page" style="display:block;">
+    <div style="
+      width: 100%; background: rgba(79,70,229,0.12); border: 1px solid rgba(79,70,229,0.4);
+      color: var(--accent); padding: 10px 14px; border-radius: 12px; margin-bottom: 20px; font-size: 0.85rem;
+      display: flex; justify-content: space-between; align-items: center;
+    ">
+      <span>Quantum-safe TLS mode enabled — Hybrid ECDHE + Kyber + PQ certificates.</span>
+    </div>
+
+    <!-- Attack Simulation Controls -->
+    <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom:25px;">
+      <div style="font-size:0.95rem; color:var(--text-muted); max-width: 50%;">
+        <strong>Developer Mode:</strong> Simulate misuse cases to validate dashboard integrity constraints.
+      </div>
+      <div style="display:flex; gap:10px; align-items: center;">
+        <select id="attackSelector" style="width: auto; border: 1px solid var(--danger); color: var(--danger);">
+          <option value="">Select Attack Scenario...</option>
+          <option value="downgrade">Misuse Case 1: Downgrade Attack (Extension Stripping)</option>
+          <option value="spoof">Misuse Case 2: Quantum MitM (Forged RSA Cert)</option>
+          <option value="legacy">Misuse Case 3: Legacy Client Connection</option>
+        </select>
+        <button onclick="runAttackSimulation()" style="margin-top:0; background: var(--danger); border-color: var(--danger);">
+          Run Attack Simulation
+        </button>
+      </div>
+    </div>
+     
+    <!-- Attack Output Areas -->
+    <div id="attackSimBox" class="simulation-box" style="border-color: var(--danger);">
+        <h2 style="margin-bottom: 10px; color: var(--danger); font-size: 0.9rem;">Injecting Adversary into Network...</h2>
+        <div class="progress-track"><div id="attackProgress" class="progress-fill" style="background: var(--danger);"></div></div>
+        <div id="attackOutput" class="terminal-output" style="color: #fca5a5;">Initializing Red Team tools...</div>
+    </div>
+
+    <!-- Visualizers (Downgrade/Spoof) -->
+    <div id="downgradeVisualizer" style="display:none; margin-bottom: 30px; animation: fadeIn 0.5s;">
+        <div style="background: rgba(239,68,68,0.05); border: 1px solid var(--danger); border-radius: 12px; padding: 20px;">
+            <div style="display:flex; justify-content:space-between; margin-bottom: 20px;">
+                <h2 style="color: var(--danger); font-size: 1.1rem; display:flex; align-items:center; gap:10px;">
+                    <span>⚠️ ALERT: Active Downgrade Detected</span>
+                </h2>
+                <button onclick="closeAttackVisual()" style="margin:0; background:transparent; border:1px solid var(--border-subtle); padding: 4px 12px; font-size:0.75rem; color:var(--text-muted);">Close Forensic View</button>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 0.2fr 1fr; gap: 15px; align-items: center;">
+                <div class="packet-card">
+                    <div class="packet-header" style="border-bottom-color: #4ade80; color:#4ade80;">CLIENT HELLO (Legitimate)</div>
+                    <div class="packet-row highlight-good">+ Ext: key_share (Kyber-768)</div>
+                    <div class="packet-row">+ Ext: key_share (X25519)</div>
+                    <div class="packet-row">+ Version: TLS 1.3</div>
+                    <div class="packet-footer">Status: Quantum-Safe Intent</div>
+                </div>
+                <div style="text-align:center; color: var(--danger); font-size: 2rem;">🛑<br><span style="font-size:0.6rem; text-transform:uppercase;">Stripped</span>→</div>
+                <div class="packet-card" style="border-color: var(--danger);">
+                    <div class="packet-header" style="border-bottom-color: var(--danger); color:var(--danger);">SERVER HELLO (Received)</div>
+                    <div class="packet-row highlight-bad" style="text-decoration: line-through; opacity: 0.5;">- Ext: key_share (Kyber-768)</div>
+                    <div class="packet-row">! WARNING: Missing PQ Param</div>
+                    <div class="packet-row highlight-warn">FALLBACK: X25519 Only</div>
+                    <div class="packet-footer" style="color:var(--danger);">Result: VULNERABLE TUNNEL</div>
+                </div>
+            </div>
+            <div style="margin-top: 20px; font-family: monospace; font-size: 0.8rem; color: #fca5a5; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 6px;">
+                >> ANALYSIS: An intermediary node removed the Post-Quantum extension (0x002F) from the handshake.<br>
+                >> RESULT: The server honored the remaining classical keys. This connection is NOT safe from HNDL.<br>
+                >> ACTION: Policy violation detected. <strong style="color:#ef4444; border:1px solid #ef4444; padding:2px 4px; border-radius:4px;">CONNECTION TERMINATED</strong>
+            </div>
+        </div>
+    </div>
+
+    <div id="spoofVisualizer" style="display:none; margin-bottom: 30px; animation: fadeIn 0.5s;">
+        <div style="background: rgba(239,68,68,0.05); border: 1px solid var(--danger); border-radius: 12px; padding: 20px;">
+            <div style="display:flex; justify-content:space-between; margin-bottom: 20px;">
+                <h2 style="color: var(--danger); font-size: 1.1rem; display:flex; align-items:center; gap:10px;">
+                    <span>⛔ SECURITY ALERT: Quantum Forgery Detected</span>
+                </h2>
+                <button onclick="closeAttackVisual()" style="background:transparent; border:1px solid var(--border-subtle); padding: 4px 12px; font-size:0.75rem; color:var(--text-muted); cursor:pointer;">Close Forensic View</button>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 0.1fr 1fr; gap: 15px; align-items: start;">
+                <div class="packet-card" style="border-color: var(--accent-strong); opacity: 0.8;">
+                    <div class="packet-header" style="color:var(--accent-strong); border-bottom-color: var(--accent-strong);">EXPECTED IDENTITY (PQC)</div>
+                    <div class="packet-row">Subject: <span style="color:#fff">vpn.company.com</span></div>
+                    <div class="packet-row">Issuer: <span style="color:#fff">Internal PQC CA G2</span></div>
+                    <div class="packet-row highlight-good" style="margin-top:5px; border:1px solid rgba(34,197,94,0.3);">Signature: Dilithium3 (Quantum-Safe)</div>
+                    <div class="packet-row" style="font-size:0.65rem; color:#888; margin-top:5px;">Fingerprint: AA:BB:CC:12:34:56...</div>
+                    <div class="packet-footer" style="color:#4ade80;">Status: Policy Compliant</div>
+                </div>
+                <div style="text-align:center; align-self:center; font-weight:900; color:var(--text-muted); font-size:1.2rem;">VS</div>
+                <div class="packet-card" style="border-color: var(--danger); box-shadow: 0 0 20px rgba(239,68,68,0.15);">
+                    <div class="packet-header" style="color:var(--danger); border-bottom-color: var(--danger);">RECEIVED IDENTITY (ATTACKER)</div>
+                    <div class="packet-row">Subject: <span style="color:#fff">vpn.company.com</span> <span style="color:var(--danger); font-weight:bold;">(SPOOFED)</span></div>
+                    <div class="packet-row">Issuer: <span style="color:#fff">Internal PQC CA G2</span> <span style="color:var(--danger); font-weight:bold;">(CLONED)</span></div>
+                    <div class="packet-row highlight-bad" style="margin-top:5px; border:1px dashed var(--danger); background:rgba(239,68,68,0.1);">Signature: RSA-4096 (BROKEN)</div>
+                    <div class="packet-row" style="font-size:0.65rem; color:#888; margin-top:5px;">Fingerprint: FF:00:DE:AD:BE:EF... (UNKNOWN)</div>
+                    <div style="margin-top: 12px; padding-top: 8px; border-top: 1px solid #333; font-size: 0.7rem; color: #aaa;">
+                        <div style="margin-bottom:2px;"><strong style="color:var(--danger)">Quantum Forensic Analysis:</strong></div>
+                        <div>• Integrity Check: <span style="color:#4ade80">VALID</span> (Math matches RSA Public Key)</div>
+                        <div>• PQC Policy: <span style="color:var(--danger)">FAILED</span> (RSA is not Dilithium)</div>
+                    </div>
+                </div>
+            </div>
+            <div style="margin-top: 20px; font-family: monospace; font-size: 0.8rem; color: #fca5a5; padding: 12px; background: rgba(0,0,0,0.4); border-radius: 6px; border:1px solid #333;">
+                <span style="color:#888;">[10:42:05]</span> POLICY_ENGINE: Handshake initiated.<br>
+                <span style="color:#888;">[10:42:06]</span> CERT_VERIFY: Signature valid. Public Key matches.<br>
+                <span style="color:#888;">[10:42:06]</span> ALGO_CHECK: Detected 'sha256WithRSAEncryption'.<br>
+                <span style="color:#888;">[10:42:06]</span> <strong style="color:var(--danger)">CRITICAL: Algorithm violation. PQC Policy enforces Dilithium3.</strong><br>
+                <span style="color:#888;">[10:42:07]</span> CONNECTION_DROP: Packet rejected. Alert sent to SIEM.
+                <br><span style="color:#ef4444; font-weight:bold;">>> ACTION: Connection TERMINATED.</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- KPI Cards -->
+    <div class="cards-row">
+      <div class="card">
+        <h2>Total TLS VPN Tunnels</h2>
+        <div class="card-main"><span class="value" id="dashTotal">–</span></div>
+        <div style="margin-top:10px; font-size:0.75rem; color:var(--text-muted);">All SSL VPN profiles within this organisation.</div>
+        <div style="margin-top:10px; display:inline-block; padding:4px 10px; border-radius:999px; background:var(--accent-soft); border:1px solid var(--accent); font-size:0.7rem;">TLS INVENTORY</div>
+      </div>
+      <div class="card">
+        <h2>Quantum-Safe Tunnels</h2>
+        <div class="card-main"><span class="value" id="dashSafe">–</span><span class="unit">of fleet</span></div>
+        <div style="margin-top:10px; display:inline-block; padding:4px 10px; border-radius:999px; background:var(--pill-safe); border:1px solid var(--pill-safe-border); color:#bbf7d0; font-size:0.7rem;">HYBRID PQC</div>
+      </div>
+      <div class="card">
+        <h2>Quantum-Vulnerable Tunnels</h2>
+        <div class="card-main"><span class="value" id="dashVulnerable">–</span><span class="unit">HNDL risk</span></div>
+        <div style="margin-top:10px; display:inline-block; padding:4px 10px; border-radius:999px; background:var(--pill-vuln); border:1px solid var(--pill-vuln-border); color:#fecaca; font-size:0.7rem;">HNDL TARGET</div>
+      </div>
+      <div class="card">
+        <h2>Legacy-Only Exceptions</h2>
+        <div class="card-main"><span class="value" id="dashLegacy">–</span><span class="unit">non-PQ clients</span></div>
+        <div style="margin-top:10px; display:inline-block; padding:4px 10px; border-radius:999px; background:var(--pill-legacy); border:1px solid var(--pill-legacy-border); color:#fef3c7; font-size:0.7rem;">EXCEPTION PATH</div>
+      </div>
+    </div>
+
+    <!-- Legacy Exception List (MOVED UP FOR VISIBILITY) -->
+    <div class="table-wrapper" style="margin-bottom:20px;">
+        <h2 style="padding:15px; font-size:0.9rem; border-bottom:1px solid var(--border-subtle); margin:0; display:flex; justify-content:space-between;">
+            <span>Legacy Exception List (Confidential)</span>
+            <span style="font-size:0.7rem; color:var(--text-muted); font-weight:normal;">Devices authorized to bypass PQC</span>
+        </h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Device ID</th>
+                    <th>IP Address</th>
+                    <th>Approved By</th>
+                    <th>Date</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="exceptionTable"></tbody>
+        </table>
+    </div>
+
+    <!-- Active Tunnel Status Table -->
+    <div class="table-wrapper">
+        <h2 style="padding:15px; font-size:0.9rem; border-bottom:1px solid var(--border-subtle); margin:0;">Active Tunnel Status</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Tunnel</th>
+                    <th>Site</th>
+                    <th>TLS</th>
+                    <th>Key Exchange</th>
+                    <th>Certificate</th>
+                    <th>Risk</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="dashboardTunnelTable"></tbody>
+        </table>
+    </div>
+  </div>
+
+  <!-- ================= TUNNELS PAGE ================= -->
+  <div id="page-tunnels" class="page">
+    <h1>SSL VPN Tunnels</h1>
+    <p style="margin-top:6px; margin-bottom:14px; color:var(--text-muted); font-size:0.85rem;">
+        Click a tunnel to inspect its TLS handshake & PQ posture.
+    </p>
+    <div style="display:flex; gap:10px; margin-bottom:16px;">
+        <button class="filter-btn filter-active" onclick="setTunnelFilter('all')" style="margin:0; background:rgba(79,70,229,0.18); border:1px solid var(--accent);">All</button>
+        <button class="filter-btn" onclick="setTunnelFilter('safe')" style="margin:0; background:rgba(255,255,255,0.05); border:1px solid var(--border-subtle);">Quantum-Safe</button>
+        <button class="filter-btn" onclick="setTunnelFilter('vuln')" style="margin:0; background:rgba(255,255,255,0.05); border:1px solid var(--border-subtle);">Quantum-Vulnerable</button>
+    </div>
+    <div class="table-wrapper">
+        <table>
+        <thead><tr><th>Tunnel</th><th>Site</th><th>TLS</th><th>Key Exchange</th><th>Certificate</th><th>Risk</th><th>Status</th></tr></thead>
+        <tbody id="tunnelTable"></tbody>
+        </table>
+    </div>
+    
+    <!-- NEW: SPLIT VIEW DETAIL PANEL -->
+    <div class="detail-panel" id="tunnelDetail">
+        <div class="detail-header-bar">
+            <h2 id="detailName" style="margin:0; color:#000;">Certificate Viewer: vpn.company.com</h2>
+            <button onclick="closeDetail()" style="margin:0; padding:4px 10px; font-size:0.7rem; background:transparent; border:1px solid #ccc; color:#000;">Close</button>
+        </div>
+        
+        <div class="split-view-container">
+            
+            <!-- LEFT: CERTIFICATE VIEWER (WINDOWS STYLE) -->
+            <div class="cert-side">
+                <div class="cert-tabs">
+                    <div class="cert-tab active" onclick="switchTab('general')">General</div>
+                    <div class="cert-tab" onclick="switchTab('details')">Details</div>
+                </div>
+                
+                <div class="cert-body">
+                    <!-- General -->
+                    <div id="tab-general" class="cert-view-page" style="display:block;">
+                        <div class="cert-section-title">Issued To</div>
+                        <div class="cert-section-content">
+                            <div class="cert-kv-row"><span class="cert-kv-key">Common Name (CN)</span><span class="cert-kv-val" id="genCNTo">vpn.company.com</span></div>
+                            <div class="cert-kv-row"><span class="cert-kv-key">Organization (O)</span><span class="cert-kv-val">PQC Lab</span></div>
+                            <div class="cert-kv-row"><span class="cert-kv-key">Organizational Unit (OU)</span><span class="cert-kv-val">VPN Gateway</span></div>
+                        </div>
+
+                        <div class="cert-section-title">Issued By</div>
+                        <div class="cert-section-content">
+                            <div class="cert-kv-row"><span class="cert-kv-key">Common Name (CN)</span><span class="cert-kv-val" id="genCNBy">Internal PQC Root CA G2</span></div>
+                            <div class="cert-kv-row"><span class="cert-kv-key">Organization (O)</span><span class="cert-kv-val">PQC Lab</span></div>
+                        </div>
+
+                        <div class="cert-section-title">Validity Period</div>
+                        <div class="cert-section-content">
+                            <div class="cert-kv-row"><span class="cert-kv-key">Issued On</span><span class="cert-kv-val" id="genValidFrom">Monday, Oct 27, 2025</span></div>
+                            <div class="cert-kv-row"><span class="cert-kv-key">Expires On</span><span class="cert-kv-val" id="genValidTo">Monday, Jan 19, 2026</span></div>
+                        </div>
+
+                        <div class="cert-section-title">Fingerprints (SHA-256)</div>
+                        <div class="cert-section-content" style="font-family:monospace; font-size:0.7rem; color:#555;">
+                            <div style="margin-bottom:4px;" id="genThumbCert">a3:b4:c5...</div>
+                            <div id="genThumbKey">f2:91:0a...</div>
+                        </div>
+                    </div>
+
+                    <!-- Details -->
+                    <div id="tab-details" class="cert-view-page">
+                        <div class="cert-list">
+                            <div class="cert-list-header">
+                                <span style="width:40%">Field</span><span style="width:60%">Value</span>
+                            </div>
+                            <div id="certDetailsList"></div>
+                        </div>
+                        <div class="cert-detail-area" id="certDetailView">Select a field to view its value.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT: KEM / PACKET CONSOLE -->
+            <div class="kem-side">
+                <div class="kem-header">Quantum Key Exchange (KEM) Analysis</div>
+                <div class="kem-content" id="kemContent">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+        </div>
+    </div>
+  </div>
+
+  <!-- ================= KEY MANAGEMENT PAGE (SPLIT) ================= -->
+  <div id="page-key-management" class="page">
+    <h1 style="margin-bottom: 20px;">Key Management</h1>
+    
+    <div id="configSimulation" class="simulation-box">
+        <h2 style="margin-bottom: 10px; color: var(--accent); font-size: 0.9rem;">Deploying Policy Updates...</h2>
+        <div class="progress-track"><div id="configProgress" class="progress-fill"></div></div>
+        <div id="configOutput" class="terminal-output">Initializing...</div>
+    </div>
+
+    <!-- NEW: SPLIT VIEW FOR KEYS -->
+    <div class="key-mgmt-grid">
+        <!-- COLUMN 1: SERVER IDENTITY -->
+        <div class="crypto-section">
+            <h2>🔐 My Server Identity</h2>
+            <div class="section-desc">The specific keys used by THIS VPN gateway to prove its identity. (Highly Confidential)</div>
+            <div id="serverIdentityContainer"></div>
+            <button onclick="rotateServerKey()" style="width:100%; margin-top:10px;">↻ Rotate Server Key (PQC)</button>
+        </div>
+        <!-- COLUMN 2: TRUSTED ROOT STORE -->
+        <div class="crypto-section">
+            <h2>📜 Trusted Root Authorities</h2>
+            <div class="section-desc">The Root CAs trusted to issue certificates for clients connecting to this VPN.</div>
+            <div id="trustStoreContainer"></div>
+        </div>
+    </div>
+
+    <!-- EXISTING: POLICY & ALGOS -->
+    <div class="crypto-section">
+      <h2>Global PQC Policy Configuration</h2>
+      <p style="color:var(--text-muted); font-size:0.8rem; margin-bottom:15px;">
+          Configure the specific Hybrid KEM and PQC Signature Algorithms to be enforced on selected tunnels.
+      </p>
+      <h3>1. Select Target Tunnels</h3>
+      <div id="tunnelSelector" class="tunnel-checkbox-list"></div>
+      <h3>2. Configure Handshake (KEM) & Certificate</h3>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px;">
+          <div>
+              <label style="font-size:0.8rem; color:var(--text-muted);">Hybrid Key Exchange (KEM)</label>
+              <select id="kemSelect"><option>Kyber-512</option><option>Kyber-768</option></select>
+          </div>
+          <div>
+              <!-- RE-ENABLED SELECTION WITH NIST OPTIONS -->
+              <label style="font-size:0.8rem; color:var(--text-muted);">Server Certificate Signature</label>
+              <select id="certSelect">
+                  <option value="Dilithium3">Dilithium3</option>
+                  <option value="SPHINCS+">SPHINCS+</option>
+                  <option value="Falcon-512">Falcon-512</option>
+              </select>
+          </div>
+      </div>
+      <button onclick="applyCryptoProfile()">Apply Policy to Selected</button>
+      <div id="cryptoError" class="error-banner"></div>
+      <div id="cryptoSuccess" class="success-banner"></div>
+    </div>
+
+    <div class="crypto-section">
+      <h2>PQC Algorithm Inventory & Cost Analysis</h2>
+      <div style="display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; gap: 10px; font-size: 0.7rem; color: var(--text-muted); margin-bottom: 5px; text-transform: uppercase;">
+        <div>Algorithm</div><div>Type</div><div>Key Size/Overhead</div><div>Performance Cost</div>
+      </div>
+      <hr style="border: 0; border-top: 1px solid var(--border-subtle); margin-bottom: 10px;">
+      <div id="algoList"></div>
+    </div>
+
+    <div class="crypto-section">
+      <h2>PQC KEK Rewrapping Configuration</h2>
+      <h3>Choose PQ KEM for KEK wrapping</h3>
+      <select id="wrapKEM"><option>Kyber-512</option><option>Kyber-768</option></select>
+      <p style="margin-top:8px;color:var(--text-muted);font-size:0.85rem;">Only the Key Encryption Key (KEK) is rewrapped.</p>
+      <button onclick="saveKEKPolicy()">Save KEK Policy</button>
+      <div id="kekSuccess" class="success-banner"></div>
+    </div>
+  </div>
+
+  <!-- ================= ARCHIVES PAGE ================= -->
+  <div id="page-archives" class="page">
+    <h1 style="margin-bottom: 20px;">Archive KEK Rewrapping</h1>
+    <div id="archiveSimulation" class="simulation-box">
+        <h2 style="margin-bottom: 10px; color: var(--accent); font-size: 0.9rem;">Rewrapping Keys...</h2>
+        <div class="progress-track"><div id="archiveProgress" class="progress-fill"></div></div>
+        <div id="archiveOutput" class="terminal-output">Initializing...</div>
+    </div>
+    <div id="archiveContainer"></div>
+  </div>
+
+  <!-- ================= LOGS PAGE ================= -->
+  <div id="page-logs" class="page">
+    <h1>System Logs</h1>
+    <div class="log-box" id="logBox"></div>
+  </div>
+
+</div>
+
+<!-- ================= MODALS ================= -->
+<div id="downgradeModal" class="modal">
+  <div class="modal-content">
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:15px; color:#facc15;">
+        <h2 style="font-size:1.1rem; color:#fff;">Legacy Connection Request</h2>
+    </div>
+    <p style="margin-bottom:15px; color:var(--text-muted); font-size:0.9rem;">
+        A client is attempting to establish a <strong>Classical TLS 1.3</strong> session without Post-Quantum extensions.
+    </p>
+    <div style="background:rgba(255,255,255,0.05); padding:12px; border-radius:8px; margin-bottom:15px;">
+        <div class="modal-row"><span class="modal-label">Source IP:</span><span class="modal-val">203.117.45.12</span></div>
+        <div class="modal-row"><span class="modal-label">Location:</span><span class="modal-val">🇸🇬 Singapore, HQ</span></div>
+        <div class="modal-row" style="border-bottom:none; padding-bottom:0;"><span class="modal-label">Device ID:</span><span class="modal-val">FINANCE-LAPTOP-04</span></div>
+    </div>
+    <div style="font-size:0.8rem; color:#ef4444; background:rgba(239,68,68,0.1); padding:8px; border-radius:6px;">
+        Warning: Accepting this connection creates a Harvest-Now-Decrypt-Later risk for this session.
+    </div>
+    <div class="modal-actions">
+      <button class="btn-reject" onclick="rejectDowngrade()">Block Connection</button>
+      <button class="btn-accept" onclick="approveDowngrade()">Allow Legacy Mode</button>
+    </div>
+  </div>
+</div>
+
+<div id="inspectorModal" class="modal">
+  <div class="modal-content" style="width: 900px; max-width: 95vw; text-align: left;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+        <div>
+            <h2 id="inspectorTitle" style="color:#fff;">Archive Inspector</h2>
+            <div id="inspectorSubtitle" style="color:var(--text-muted); font-size:0.8rem; font-family:monospace;">ID: ARCH_01 • FORMAT: PQAR_V2</div>
+        </div>
+        <button onclick="closeInspector()" style="background:transparent; border:1px solid var(--border-subtle); margin:0;">Close</button>
+    </div>
+    <div class="inspector-grid">
+        <div class="file-structure" id="inspectorStructure"></div>
+        <div class="hex-editor" id="inspectorHex"></div>
+    </div>
+    <div style="margin-top:15px; padding:10px; background:rgba(0,0,0,0.3); border-radius:6px; font-size:0.8rem; display:flex; gap:15px;">
+        <div style="flex:1"><span style="color:var(--text-muted)">Encryption Scheme:</span><br><strong id="inspectorScheme" style="color:#fff;">-</strong></div>
+        <div style="flex:1"><span style="color:var(--text-muted)">HNDL Vulnerability:</span><br><strong id="inspectorRisk" style="color:#fff;">-</strong></div>
+        <div style="flex:1"><span style="color:var(--text-muted)">Wrapping Key Size:</span><br><strong id="inspectorSize" style="color:#fff;">-</strong></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===========================================================
+   DATA MODELS (COMBINED)
+=========================================================== */
+let tunnelFilter = "all";
+
+// Tunnel Data (Confidential)
+let tunnels = [
+  { id: 1, name: "HQ ↔ Core Services DC", site: "DC1 – Core Services", tls: "TLS 1.3", kex: "ECDHE + Kyber-768", cert: "Dilithium3", status: "safe", hndl: "low", captured: "No" },
+  { id: 2, name: "HQ ↔ EU Operations", site: "EU-OPS-01", tls: "TLS 1.3", kex: "ECDHE Only", cert: "RSA-4096 (Legacy)", status: "vuln", hndl: "high", captured: "Yes" },
+  { id: 3, name: "HQ ↔ DR Site", site: "DR-REGION-01", tls: "TLS 1.3", kex: "ECDHE + Kyber-512", cert: "SPHINCS+", status: "safe", hndl: "low", captured: "No" },
+  // ADDED: NEW RAW DATA TUNNEL
+  { id: 4, name: "Research Lab ↔ Data Lake (Raw)", site: "R&D Facility", tls: "TLS 1.3", kex: "ECDHE + Kyber-1024", cert: "Dilithium3", status: "safe", hndl: "low", captured: "No" }
+];
+
+// Algo Specs (Public)
+const algoStats = {
+    "Kyber-512": { type: "KEM", size: "800 bytes", speed: "Fast", cost: "Low" },
+    "Kyber-768": { type: "KEM", size: "1184 bytes", speed: "Fast", cost: "Low" },
+    "Dilithium3": { type: "Signature", size: "~1312 bytes", speed: "Fast", cost: "Medium" },
+    "SPHINCS+": { type: "Signature", size: "~41 KB", speed: "Slow", cost: "High (Size)" },
+    "Falcon-512": { type: "Signature", size: "~666 bytes", speed: "Very Fast", cost: "Low" }
+};
+
+// Archives (Confidential)
+let archives = [
+  { id: 1, name: "vpn_logs_backup.zip", status: "classical" },
+  { id: 2, name: "packet_capture_01.pcap", status: "classical" }
+];
+
+// 1. TRUSTED ROOT STORE (Highly Confidential)
+// CHANGED: Legacy status is now "Deprecated"
+let trustStore = [
+    { id: "ROOT_PQC_01", name: "Internal PQC Root CA G2", algo: "Dilithium3 (Round 3)", fingerprint: "AA:BB:CC:11:22:33:44:55", status: "Active" },
+    { id: "ROOT_LEGACY_01", name: "Legacy RSA Root CA G1", algo: "RSA-4096", fingerprint: "FF:00:DE:AD:BE:EF:00:11", status: "Deprecated" }
+];
+
+// 2. SERVER IDENTITY (Highly Confidential)
+// Dynamic Age Calculation
+const randomDays = Math.floor(Math.random() * (90 - 14) + 14); // 2 weeks to 3 months
+const createdDate = new Date();
+createdDate.setDate(createdDate.getDate() - randomDays);
+
+let serverIdentity = {
+    id: "SRV_KEY_01", 
+    algo: "Dilithium3", 
+    fingerprint: "7A:9C:11:BB:CC:DD:EE:FF", 
+    created: createdDate.toLocaleDateString(), 
+    age: `${randomDays} days`,
+    status: "Active"
+};
+
+// 3. EXCEPTION LIST (Confidential)
+// ADDED DUMMY ENTRY SO YOU CAN SEE THE TABLE
+let legacyExceptions = [
+    { deviceId: "LEGACY-SENSOR-01", ip: "192.168.10.55", approvedBy: "System Migration", date: "2024-10-15" }
+];
+
+// 4. USER ROLE (Sensitive)
+const currentUser = { name: "Koh Yui", id: "2301755A", role: "SECURITY_ADMIN" };
+
+let selectedTunnel = null;
+let pendingDowngradeTunnel = null;
+let currentWrapKEM = "Kyber-512";
+let dosTimer = null;
+
+/* ===========================================================
+   PAGE NAVIGATION
+=========================================================== */
+const pages = document.querySelectorAll(".page");
+const navItems = document.querySelectorAll(".nav-item");
+
+navItems.forEach(item => {
+  item.addEventListener("click", () => {
+    navItems.forEach(n => n.classList.remove("active"));
+    item.classList.add("active");
+    let page = item.dataset.page;
+    pages.forEach(p => p.style.display = "none");
+    document.getElementById("page-" + page).style.display = "block";
+  });
+});
+
+/* ===========================================================
+   INITIAL RENDER
+=========================================================== */
+function init() {
+  renderTunnels();
+  renderDashboardTable();
+  renderExceptions(); 
+  renderArchives();
+  renderAlgorithms();
+  renderTunnelSelector();
+  renderKeyMgmt(); 
+  updateDashboardStats();
+  log("System initialized. Session started for " + currentUser.name);
+}
+
+/* ===========================================================
+   RENDER FUNCTIONS
+=========================================================== */
+function renderDashboardTable() {
+  const table = document.getElementById("dashboardTunnelTable");
+  if(!table) return; 
+  table.innerHTML = "";
+  tunnels.forEach(t => {
+    let kexBadge = t.kex.includes("Kyber") || t.kex.includes("Hybrid")
+        ? `<span class="badge" style="border:1px solid #6366f1; color:#c7d2fe; background:rgba(99,102,241,0.15)">Hybrid PQ</span>`
+        : `<span class="badge" style="border:1px solid #64748b; color:#94a3b8; background:rgba(100,116,139,0.15)">Classical Only</span>`;
+    let riskBadge = t.hndl === "low"
+        ? `<span class="badge badge-safe">Low (PQ Hybrid)</span>`
+        : (t.hndl === "high" ? `<span class="badge badge-vuln">High HNDL</span>` : `<span class="badge badge-legacy">Medium HNDL</span>`);
+    
+    let row = document.createElement("tr");
+    row.onclick = () => { document.querySelector('[data-page="tunnels"]').click(); showTunnelDetail(t.id); };
+    row.innerHTML = `
+        <td><div style="font-weight:600; font-size:0.85rem;">${t.name}</div><div style="font-size:0.7rem; color:var(--text-muted);">SSL VPN</div></td>
+        <td>${t.site}</td><td><span style="color:var(--text-main);">${t.tls}</span></td><td>${kexBadge}</td><td>${t.cert}</td><td>${riskBadge}</td>
+        <td><span style="color:#4ade80; font-size:0.75rem; border: 1px solid rgba(74, 222, 128, 0.3); padding: 2px 8px; border-radius: 12px; background: rgba(74, 222, 128, 0.1);">● Active</span></td>
+    `;
+    table.appendChild(row);
+  });
+}
+
+function renderExceptions() {
+    const tbody = document.getElementById("exceptionTable");
+    if(!tbody) return;
+    tbody.innerHTML = "";
+    if(legacyExceptions.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:20px;">No active exceptions. All devices enforcing PQC.</td></tr>`;
+    } else {
+        legacyExceptions.forEach((e, idx) => {
+            tbody.innerHTML += `<tr>
+                <td style="font-family:monospace;">${e.deviceId}</td>
+                <td>${e.ip}</td>
+                <td><span style="color:var(--accent);">${e.approvedBy}</span></td>
+                <td>${e.date}</td>
+                <td><button onclick="revokeException(${idx})" style="font-size:0.65rem; padding:2px 6px; margin:0; background:transparent; border:1px solid var(--danger); color:var(--danger);">Revoke</button></td>
+            </tr>`;
+        });
+    }
+}
+
+function renderKeyMgmt() {
+    // 1. Server Identity
+    const idContainer = document.getElementById("serverIdentityContainer");
+    idContainer.innerHTML = `
+        <div class="key-card">
+            <div class="key-card-header"><span>VPN Gateway Key</span><span style="color:#4ade80">● ${serverIdentity.status}</span></div>
+            <div class="key-meta"><span>Algo:</span> <span>${serverIdentity.algo}</span></div>
+            <div class="key-meta"><span>Fingerprint:</span> <span>${serverIdentity.fingerprint}</span></div>
+            <div class="key-meta"><span>Created:</span> <span>${serverIdentity.created}</span></div>
+            <div class="key-meta" style="color:var(--accent);"><span>Age:</span> <span>${serverIdentity.age}</span></div>
+        </div>`;
+
+    // 2. Trust Store
+    const trustContainer = document.getElementById("trustStoreContainer");
+    trustContainer.innerHTML = "";
+    trustStore.forEach(root => {
+        let isDeprecated = root.status === "Deprecated";
+        let color = isDeprecated ? "#9ca3af" : "#4ade80"; // Gray/Red vs Green
+        let statusBadge = isDeprecated ? `<span class="badge badge-deprecated">${root.status}</span>` : `<span style="color:${color}">● ${root.status}</span>`;
+        
+        trustContainer.innerHTML += `
+            <div class="key-card" style="${isDeprecated ? 'opacity:0.6;' : ''}">
+                <div class="key-card-header"><span>${root.name}</span>${statusBadge}</div>
+                <div class="key-meta"><span>Algo:</span> <span>${root.algo}</span></div>
+                <div class="key-meta"><span>Fingerprint:</span> <span>${root.fingerprint}</span></div>
+            </div>`;
+    });
+}
+
+function renderTunnels() {
+  const table = document.getElementById("tunnelTable");
+  table.innerHTML = "";
+  tunnels.forEach(t => {
+    if (tunnelFilter === "safe" && t.status !== "safe") return;
+    if (tunnelFilter === "vuln" && t.status !== "vuln") return;
+    let row = document.createElement("tr");
+    row.onclick = () => showTunnelDetail(t.id);
+    row.innerHTML = `
+      <td>${t.name}</td><td>${t.site}</td><td>${t.tls}</td><td>${t.kex}</td><td>${t.cert}</td><td>${t.hndl}</td>
+      <td>${t.status === "safe" ? `<span class="badge badge-safe">Quantum-Safe</span>` : `<span class="badge badge-vuln">Vulnerable</span>`}</td>
+    `;
+    table.appendChild(row);
+  });
+}
+
+function renderTunnelSelector() {
+    const selector = document.getElementById("tunnelSelector");
+    selector.innerHTML = "";
+    tunnels.forEach(t => {
+        let item = document.createElement("div");
+        item.className = "tunnel-checkbox-item";
+        item.innerHTML = `<input type="checkbox" id="chk_${t.id}" value="${t.id}"><label for="chk_${t.id}">${t.name} (${t.site})</label>`;
+        selector.appendChild(item);
+    });
+}
+
+function renderAlgorithms() {
+  const area = document.getElementById("algoList");
+  area.innerHTML = "";
+  for (const [name, stats] of Object.entries(algoStats)) {
+    let div = document.createElement("div"); div.className = "algo-spec-grid";
+    let costClass = "spec-cost-low";
+    if (stats.cost.includes("Medium")) costClass = "spec-cost-med";
+    if (stats.cost.includes("High")) costClass = "spec-cost-high";
+    div.innerHTML = `<div class="spec-label">${name}</div><div class="spec-val">${stats.type}</div><div class="spec-val">${stats.size}</div><div class="${costClass}" style="font-weight:bold;">${stats.cost}</div>`;
+    area.appendChild(div);
+  }
+}
+
+function renderArchives() {
+  const container = document.getElementById("archiveContainer");
+  container.innerHTML = "";
+  archives.forEach(a => {
+    let card = document.createElement("div"); card.className = "archive-card";
+    let isPQC = a.status === "pqc";
+    let statusBadge = !isPQC ? `<span class="badge badge-vuln">RSA-4096 (Classical)</span>` : `<span class="badge badge-safe">Kyber-768 (PQC)</span>`;
+    card.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:start;">
+          <div><h3>${a.name}</h3><div style="margin-top:5px; margin-bottom:10px;">${statusBadge}</div><div style="font-size:0.75rem; color:#888;">Size: 2.4 GB • Created: 2024-11-01</div></div>
+          <div style="text-align:right;"><button style="background:transparent; border:1px solid var(--border-subtle); font-size:0.75rem;" onclick="inspectArchive(${a.id})">🔍 Inspect Header</button>
+          ${!isPQC ? `<button style="font-size:0.75rem; margin-left:5px;" onclick="rewrapArchive(${a.id})">Rewrap KEK</button>` : ''}</div>
+      </div>`;
+    container.appendChild(card);
+  });
+}
+
+function updateDashboardStats() {
+  document.getElementById("dashTotal").innerText = tunnels.length;
+  document.getElementById("dashSafe").innerText = tunnels.filter(t => t.status === "safe").length;
+  document.getElementById("dashVulnerable").innerText = tunnels.filter(t => t.status === "vuln").length;
+  document.getElementById("dashLegacy").innerText = legacyExceptions.length;
+}
+
+function setTunnelFilter(type) {
+  tunnelFilter = type;
+  document.querySelectorAll(".filter-btn").forEach(btn => {
+      btn.style.background = "rgba(255,255,255,0.05)";
+      btn.style.border = "1px solid var(--border-subtle)";
+  });
+  if(type==="all") event.target.style.background="rgba(79,70,229,0.18)", event.target.style.border="1px solid var(--accent)";
+  if(type==="safe") event.target.style.background="rgba(34,197,94,0.12)", event.target.style.border="1px solid #22c55e";
+  if(type==="vuln") event.target.style.background="rgba(239,68,68,0.12)", event.target.style.border="1px solid #ef4444";
+  renderTunnels();
+}
+
+/* ===========================================================
+   ACTIONS & LOGIC
+=========================================================== */
+function log(msg) {
+  const box = document.getElementById("logBox");
+  let entry = document.createElement("div"); entry.className = "log-entry";
+  entry.innerHTML = `<span class="log-time">[${new Date().toLocaleTimeString()}]</span><span class="log-actor">${currentUser.role}:</span>${msg}`;
+  box.appendChild(entry); box.scrollTop = box.scrollHeight;
+}
+
+function runSimulation(areaId, progressId, outputId, steps, onComplete) {
+    const area = document.getElementById(areaId); const progress = document.getElementById(progressId); const output = document.getElementById(outputId);
+    area.style.display = "flex"; progress.style.width = "0%"; output.innerText = "> Initializing sequence...\n";
+    let stepIndex = 0;
+    function nextStep() {
+        if (stepIndex >= steps.length) {
+            output.innerText += "> DONE.\n";
+            setTimeout(() => { area.style.display = "none"; if (onComplete) onComplete(); }, 1000);
+            return;
+        }
+        output.innerText += `> ${steps[stepIndex].msg}\n`; output.scrollTop = output.scrollHeight;
+        progress.style.width = ((stepIndex + 1) / steps.length) * 100 + "%";
+        if (steps[stepIndex].action) steps[stepIndex].action();
+        stepIndex++;
+        setTimeout(nextStep, Math.floor(Math.random() * 600) + 600);
+    }
+    setTimeout(nextStep, 500);
+}
+
+// === MISUSE CASE SIMULATION ===
+function runAttackSimulation() {
+    const choice = document.getElementById("attackSelector").value;
+    document.getElementById("downgradeVisualizer").style.display = "none";
+    document.getElementById("spoofVisualizer").style.display = "none";
+    // Reset any running dos - removed
+    
+    if (choice === "downgrade") triggerDowngradeScenario();
+    else if (choice === "spoof") triggerSpoofScenario();
+    else if (choice === "legacy") triggerLegacyScenario();
+    else alert("Please select an attack scenario first.");
+}
+
+function triggerDowngradeScenario() {
+  const steps = [
+    { msg: "Initializing MITM proxy on port 443..." }, { msg: "Targeting Tunnel ID: 2 (HQ <-> EU Operations)..." },
+    { msg: "Interception successful. Holding Client Hello..." }, { msg: "Scanning extensions..." },
+    { msg: "FOUND: Extension 0x002F (Kyber-768)" }, { msg: "ACTION: Stripping 0x002F from packet buffer..." },
+    { msg: "Forwarding modified packet to Server..." }, { msg: "Server accepted Classical ECDHE fallback." },
+    { msg: "ATTACK SUCCESSFUL. Downgrade complete.", action: () => {
+        document.getElementById("downgradeVisualizer").style.display = "block";
+        log("CRITICAL: Downgrade attack detected on Tunnel 2.");
+        document.getElementById("downgradeVisualizer").scrollIntoView({ behavior: 'smooth' });
+    }}
+  ];
+  runSimulation("attackSimBox", "attackProgress", "attackOutput", steps);
+}
+
+function triggerSpoofScenario() {
+  const steps = [
+    { msg: "ATTACKER: Listening on network tap (Port 443)..." }, { msg: "ATTACKER: Intercepted Public Certificate (RSA-4096)." },
+    { msg: "ATTACKER: Extracting Modulus (N)..." }, { msg: "QUANTUM NODE: Initializing Shor's Algorithm..." },
+    { msg: "QUANTUM NODE: Period (r) found. Calculating factors..." }, { msg: "SUCCESS: Private Key (d) derived." },
+    { msg: "ATTACKER: Forged Certificate created." }, { msg: "NETWORK: Responding with Forged RSA Certificate..." },
+    { msg: "VPN DASHBOARD: Validating Chain..." }, { msg: "VPN DASHBOARD: Policy Check: INSPECTING ALGORITHM..." },
+    { msg: "CRITICAL ALERT: RSA-4096 detected. Policy requires Dilithium3.", action: () => {
+        document.getElementById("spoofVisualizer").style.display = "block";
+        document.getElementById("spoofVisualizer").scrollIntoView({ behavior: 'smooth' });
+        log("BLOCKED: Quantum Forgery attempt. Valid RSA Signature rejected by Policy.");
+    }}
+  ];
+  runSimulation("attackSimBox", "attackProgress", "attackOutput", steps);
+}
+
+function triggerLegacyScenario() {
+    const steps = [
+        { msg: "Listener: Incoming connection from 203.117.45.12" }, { msg: "Handshake: ClientHello received (TLS 1.2 / TLS 1.3)" },
+        { msg: "Analysis: Scanning for Post-Quantum Extension (0x002F)..." }, { msg: "Result: 0x002F NOT FOUND. Classical algorithms only." },
+        { msg: "Policy: Connection PAUSED. PQC-Enforcement active." },
+        { msg: "Action: Requesting Administrator Approval...", action: () => { document.getElementById("downgradeModal").style.display = "flex"; }}
+    ];
+    runSimulation("attackSimBox", "attackProgress", "attackOutput", steps);
+}
+
+function approveDowngrade() {
+    document.getElementById("downgradeModal").style.display = "none";
+    document.getElementById("attackSimBox").style.display = "none";
+    // Add to Active Tunnels
+    tunnels.push({
+        id: tunnels.length+1, name: "Finance Laptop (Legacy)", site: "Remote User (SG)", tls: "Classical TLS 1.3",
+        kex: "ECDHE Only", cert: "RSA-2048 (Legacy)", status: "vuln", hndl: "high", captured: "Yes"
+    });
+    // Add to Exceptions Database
+    legacyExceptions.push({ deviceId: "FINANCE-LAPTOP-04", ip: "203.117.45.12", approvedBy: currentUser.name, date: new Date().toLocaleDateString() });
+    
+    // UPDATED LOGGING REQUIREMENT
+    log(`Legacy Access GRANTED | Device: FINANCE-LAPTOP-04 | IP: 203.117.45.12 | Loc: Singapore, HQ | User: ${currentUser.name}`);
+    
+    renderTunnels(); renderDashboardTable(); renderExceptions(); updateDashboardStats();
+}
+
+function rejectDowngrade() {
+    document.getElementById("downgradeModal").style.display = "none";
+    document.getElementById("attackSimBox").style.display = "none";
+    
+    // UPDATED LOGGING REQUIREMENT
+    log("Legacy Access BLOCKED | Device: FINANCE-LAPTOP-04 | IP: 203.117.45.12 | Loc: Singapore, HQ");
+}
+
+function revokeException(idx) {
+    let removed = legacyExceptions.splice(idx, 1);
+    log(`Revoked Exception for ${removed[0].deviceId}`);
+    // Also remove from active tunnels if present (Logic simplification)
+    tunnels = tunnels.filter(t => t.name !== "Finance Laptop (Legacy)");
+    renderTunnels(); renderDashboardTable(); renderExceptions(); updateDashboardStats();
+}
+
+function closeAttackVisual() {
+  document.getElementById("downgradeVisualizer").style.display = "none";
+  document.getElementById("spoofVisualizer").style.display = "none";
+  document.getElementById("attackSelector").value = ""; 
+}
+
+// === CRYPTO OPS ===
+function applyCryptoProfile() {
+  const kem = document.getElementById("kemSelect").value;
+  const cert = document.getElementById("certSelect").value;
+  
+  const checkedBoxes = document.querySelectorAll('.tunnel-checkbox-item input:checked');
+  if (checkedBoxes.length === 0) return document.getElementById("cryptoError").style.display = "block", document.getElementById("cryptoError").innerText = "Select at least one tunnel.";
+  document.getElementById("cryptoError").style.display = "none"; document.getElementById("cryptoSuccess").style.display = "none";
+  const steps = [
+      { msg: `CMD: set_tls_policy --kem=${kem} --cert=${cert}` },
+      { msg: `Targeting ${checkedBoxes.length} tunnels...` }, { msg: "Validating parameter sets..." },
+      { msg: "Deploying certificates..." },
+      { msg: "Policy applied successfully.", action: () => {
+          checkedBoxes.forEach(chk => {
+              const t = tunnels.find(x => x.id === parseInt(chk.value));
+              if (t) { t.tls = "TLS 1.3"; t.kex = `ECDHE + ${kem}`; t.cert = `${cert}`; t.status = "safe"; t.hndl = "low"; }
+          });
+          renderTunnels(); renderDashboardTable(); updateDashboardStats();
+      }}
+  ];
+  runSimulation("configSimulation", "configProgress", "configOutput", steps, () => {
+      document.getElementById("cryptoSuccess").style.display = "block";
+      document.getElementById("cryptoSuccess").innerText = "Crypto profile applied.";
+      log(`Applied ${kem} + ${cert} to ${checkedBoxes.length} tunnels.`);
+  });
+}
+
+function rotateServerKey() {
+    serverIdentity.created = new Date().toLocaleDateString();
+    serverIdentity.age = "0 days"; // Reset age on rotate
+    alert("Generated new Dilithium3 Key Pair. CSR sent to Internal CA.");
+    log("Rotated Server Identity Key (Dilithium3)");
+    renderKeyMgmt();
+}
+
+function saveKEKPolicy() {
+  currentWrapKEM = document.getElementById("wrapKEM").value;
+  document.getElementById("kekSuccess").style.display = "none";
+  runSimulation("configSimulation", "configProgress", "configOutput", [
+      { msg: "Connecting to KMS..." }, { msg: `Setting master wrapping key policy: ${currentWrapKEM}` }, { msg: "Policy Saved." }
+  ], () => {
+      document.getElementById("kekSuccess").style.display = "block";
+      document.getElementById("kekSuccess").innerText = "Policy saved: " + currentWrapKEM;
+      log("Updated KEK wrapping policy to " + currentWrapKEM);
+  });
+}
+
+function rewrapArchive(id) {
+  let archive = archives.find(a => a.id === id);
+  runSimulation("archiveSimulation", "archiveProgress", "archiveOutput", [
+      { msg: `Locking archive: ${archive.name}` }, { msg: "Decrypting DEK with legacy RSA key..." },
+      { msg: `Encrypting DEK with ${currentWrapKEM}...` }, { msg: "Success.", action: () => {
+          archive.status = "pqc"; renderArchives();
+      }}
+  ], () => { log(`Rewrapped KEK for ${archive.name} using ${currentWrapKEM}`); });
+}
+
+// === DETAILS & INSPECTOR ===
+function genHex(len) { let s=""; for(let i=0;i<len;i++) s+=Math.floor(Math.random()*16).toString(16).toUpperCase(); return s; }
+
+// REALISTIC PQC OIDs & SPECS
+const pqcSpecs = {
+    "Dilithium3": { oid: "1.3.6.1.4.1.2.267.7.6.5", keySize: "1312 bytes", sigSize: "2420 bytes", sigAlgo: "dilithium3-sha384" },
+    "SPHINCS+": { oid: "1.3.9999.6.7.1", keySize: "32 bytes", sigSize: "17088 bytes", sigAlgo: "sphincs+-sha256-128s" },
+    "Falcon-512": { oid: "1.3.9999.3.6", keySize: "897 bytes", sigSize: "666 bytes", sigAlgo: "falcon512-sha256" },
+    "RSA-4096 (Legacy)": { oid: "1.2.840.113549.1.1.1", keySize: "4096 bits", sigSize: "512 bytes", sigAlgo: "sha256WithRSAEncryption" }
+};
+
+function showTunnelDetail(id) {
+    selectedTunnel = tunnels.find(t => t.id === id);
+    const detailPanel = document.getElementById("tunnelDetail");
+    const safe = selectedTunnel.status === "safe";
+    const certName = selectedTunnel.cert; 
+    const spec = pqcSpecs[certName] || pqcSpecs["Dilithium3"]; // Fallback
+
+    // UPDATE GENERAL TAB (Windows style)
+    document.getElementById("genCNTo").innerText = selectedTunnel.site;
+    document.getElementById("genCNBy").innerText = safe ? "Internal PQC Root CA G2" : "Legacy RSA Root CA G1";
+    document.getElementById("genValidFrom").innerText = "Friday, Oct 25, 2024"; // Example
+    document.getElementById("genValidTo").innerText = "Saturday, Oct 25, 2025";
+    
+    // Fingerprints (Dynamic)
+    document.getElementById("genThumbCert").innerText = genHex(40).match(/.{1,2}/g).join(":").toLowerCase();
+    document.getElementById("genThumbKey").innerText = genHex(40).match(/.{1,2}/g).join(":").toLowerCase();
+
+    document.getElementById("detailName").innerText = "Certificate Viewer: " + selectedTunnel.site;
+
+    // UPDATE DETAILS TAB LIST
+    const list = document.getElementById("certDetailsList");
+    list.innerHTML = "";
+    
+    const details = [
+        { k: "Version", v: "V3" },
+        { k: "Serial Number", v: "4F 9A 2B 11 00 EE" },
+        { k: "Signature Algorithm", v: spec.sigAlgo },
+        { k: "Signature Hash Algorithm", v: "sha384" },
+        { k: "Issuer", v: safe ? "CN=Internal PQC Root CA G2, O=PQC Lab, C=SG" : "CN=Legacy RSA Root, O=Old Corp, C=SG" },
+        { k: "Valid From", v: "Friday, October 25, 2024 10:00:00 AM" },
+        { k: "Valid To", v: "Saturday, October 25, 2025 10:00:00 AM" },
+        { k: "Subject", v: `CN=${selectedTunnel.site}, OU=VPN Users, O=PQC Lab, C=SG` },
+        { k: "Public Key", v: `${certName} (${spec.keySize})` },
+        { k: "Public Key Params", v: `OID: ${spec.oid}` },
+        { k: "Subject Key Info", v: genHex(64) + "..." },
+        { k: "Key Usage", v: "Digital Signature, Key Encipherment (a0)" },
+        { k: "Thumbprint (SHA1)", v: genHex(40) },
+        { k: "Thumbprint (SHA256)", v: genHex(64) },
+        { k: "Hybrid KEM (Extension)", v: selectedTunnel.kex } 
+    ];
+
+    details.forEach(d => {
+        let div = document.createElement("div");
+        div.className = "cert-list-item";
+        div.innerHTML = `<div class="cert-list-col-1">${d.k}</div><div class="cert-list-col-2">${d.v}</div>`;
+        div.onclick = function() {
+            document.querySelectorAll(".cert-list-item").forEach(i => i.classList.remove("selected"));
+            this.classList.add("selected");
+            document.getElementById("certDetailView").innerText = d.v;
+        };
+        list.appendChild(div);
+    });
+
+    // UPDATE KEM CONSOLE (Right Side)
+    const kemContent = document.getElementById("kemContent");
+    if(safe) {
+        kemContent.innerHTML = `
+            <div class="kem-block">
+                <div class="kem-block-title">1. CLIENT HELLO (Extension: key_share)</div>
+                <div class="kem-hl-pq">Group: ${selectedTunnel.kex.includes("512")?"Kyber-512":"Kyber-768"} (Hybrid)</div>
+                <div class="kem-hex">00 2F 00 24 00 1D 00 20 ${genHex(32)}...</div>
+            </div>
+            <div class="kem-block">
+                <div class="kem-block-title">2. SERVER HELLO</div>
+                <div class="kem-hl-pq">Selected: Hybrid X25519+Kyber</div>
+                <div class="kem-hex">Random: ${genHex(64)}</div>
+            </div>
+            <div class="kem-block">
+                <div class="kem-block-title">3. ENCRYPTED EXTENSIONS</div>
+                <div class="kem-hex">[Encrypted Payload - AES-256-GCM]</div>
+            </div>
+            <div class="kem-block">
+                <div class="kem-block-title" style="color:#4ade80">>> KEM ENCAPSULATION COMPLETE</div>
+                <div style="color:#888">Shared Secret Established.</div>
+            </div>
+        `;
+    } else {
+        kemContent.innerHTML = `
+            <div class="kem-block" style="border-color:#ef4444;">
+                <div class="kem-block-title" style="color:#ef4444">!! CLIENT HELLO (LEGACY)</div>
+                <div class="kem-hex">No PQC Extension (0x002F) found.</div>
+            </div>
+            <div class="kem-block">
+                <div class="kem-block-title">FALLBACK: CLASSICAL ECDHE</div>
+                <div class="kem-hex">Curve: secp256r1</div>
+            </div>
+        `;
+    }
+
+    detailPanel.style.display = "block";
+    switchTab('general');
+}
+
+function switchTab(tabName) {
+    document.querySelectorAll(".cert-view-page").forEach(p => p.style.display = "none");
+    document.querySelectorAll(".cert-tab").forEach(t => t.classList.remove("active"));
+    
+    document.getElementById("tab-" + tabName).style.display = "block";
+    
+    // Map tab logic
+    const tabs = document.querySelectorAll(".cert-tab");
+    if(tabName === 'general') tabs[0].classList.add("active");
+    if(tabName === 'details') tabs[1].classList.add("active");
+}
+
+function closeDetail() { document.getElementById("tunnelDetail").style.display = "none"; }
+
+function inspectArchive(id) {
+    const archive = archives.find(a => a.id === id); const modal = document.getElementById("inspectorModal");
+    document.getElementById("inspectorTitle").innerText = "Analyzing: " + archive.name; modal.style.display = "flex";
+    let scheme = archive.status==="classical" ? "RSA-OAEP-4096 + AES-256" : "Hybrid Kyber-768 + AES-256";
+    let risk = archive.status==="classical" ? "<span style='color:#ef4444'>CRITICAL (HNDL)</span>" : "<span style='color:#4ade80'>SAFE</span>";
+    document.getElementById("inspectorScheme").innerText = scheme; document.getElementById("inspectorRisk").innerHTML = risk; document.getElementById("inspectorSize").innerText = archive.status==="classical" ? "512 bytes" : "1088 bytes";
+    
+    // Updated Realistic File Structure HTML
+    let structHTML = "";
+    if(archive.status === "classical") {
+        structHTML = `
+        <div class="structure-block" onclick="highlightHex('header')"><span class="structure-label">File Header</span><span class="structure-meta">Magic: 0x41524330 (ARC0)</span></div>
+        <div class="structure-block active" style="border-color:#ef4444; background:rgba(239,68,68,0.1);"><span class="structure-label" style="color:#fca5a5;">KEK (Key Encryption Key)</span><span class="structure-meta">Algo: RSA-4096 (Vulnerable)</span></div>
+        <div class="structure-block"><span class="structure-label">Encrypted Payload</span><span class="structure-meta">Algo: AES-256-CBC</span></div>`;
+        
+        let hexHTML = `<div style="color:#888; margin-bottom:5px;">// HEADER</div>00000000 41 52 43 30 01 00 ... <span style="color:#fff">ARC0</span><br><br><div style="color:#fca5a5; margin-bottom:5px;">// RSA-4096 MODULUS (VULNERABLE)</div>`;
+        for(let i=0; i<6; i++) hexHTML += `<div class="hex-row highlight-rsa"><span class="hex-offset">00000${20+(i*10)}</span> <span class="hex-bytes">${genHex(8)} ${genHex(8)}</span></div>`;
+        document.getElementById("inspectorHex").innerHTML = hexHTML;
+    } else {
+        // PQC Structure (PQAR v2)
+        structHTML = `
+        <div class="structure-block"><span class="structure-label">File Header</span><span class="structure-meta">Magic: 0x50514152 (PQAR v2)</span></div>
+        <div class="structure-block"><span class="structure-label">Metadata Block</span><span class="structure-meta">AlgoID: 0x04 (Kyber-768)</span><span class="structure-meta">Timestamp: ${new Date().toISOString()}</span></div>
+        <div class="structure-block active" style="border-color:#818cf8; background:rgba(129, 140, 248, 0.1);"><span class="structure-label" style="color:#a5b4fc;">KEM Ciphertext</span><span class="structure-meta">Size: 1088 bytes</span></div>
+        <div class="structure-block"><span class="structure-label">IV / Nonce</span><span class="structure-meta">12 bytes (AES-GCM)</span></div>
+        <div class="structure-block"><span class="structure-label">Encrypted Payload</span><span class="structure-meta">Algo: AES-256-GCM</span></div>
+        <div class="structure-block"><span class="structure-label">Auth Tag (MAC)</span><span class="structure-meta">16 bytes (Integrity)</span></div>`;
+        
+        let hexHTML = `<div style="color:#888; margin-bottom:5px;">// HEADER (PQAR v2)</div>00000000 50 51 41 52 02 00 ... <span style="color:#fff">PQAR</span><br>
+                        <br><div style="color:#facc15; margin-bottom:5px;">// METADATA (Algo: Kyber-768)</div><div class="hex-row highlight-meta"><span class="hex-offset">00000010</span> <span class="hex-bytes">00 04 67 4A B1 2C ...</span></div>
+                        <br><div style="color:#a5b4fc; margin-bottom:5px;">// KYBER CIPHERTEXT</div>`;
+        for(let i=0; i<6; i++) hexHTML += `<div class="hex-row highlight-kyber"><span class="hex-offset">00000${30+(i*10)}</span> <span class="hex-bytes">${genHex(8)} ${genHex(8)}</span></div>`;
+        hexHTML += `<br><div style="color:#9ca3af; margin-bottom:5px;">// IV & PAYLOAD START</div><div class="hex-row highlight-aes"><span class="hex-offset">00000400</span> <span class="hex-bytes">9A F1 ... [Encrypted]</span></div>`;
+        document.getElementById("inspectorHex").innerHTML = hexHTML;
+    }
+    document.getElementById("inspectorStructure").innerHTML = structHTML;
+}
+function closeInspector() { document.getElementById("inspectorModal").style.display = "none"; }
+
+// Start
+init();
+</script>
+</body>
+</html>
